@@ -2,31 +2,200 @@
 GLOBAL_COORDINATION_VAR = 'tts_bronstein_multi_timer'
 
 
+function concat_tables(table1, table2)
+    -- dict format only
+    -- table2 entries take precidence, in case of duplicate keys.
+    -- does not deep copy references
+
+    new_table = {}
+    for key, val in pairs(table1) do
+        new_table[key] = val
+    end
+    for key, val in pairs(table2) do
+        new_table[key] = val
+    end
+
+    return new_table
+end
+
+
+function format_time(seconds, plus)
+    -- seconds is positive number
+    -- plus is boolean, include '+' symbol in front
+
+    hours = math.floor(seconds / 3600)
+    minutes = math.floor((seconds % 3600) / 60)
+    seconds = seconds % 60
+
+    if plus then
+        sign = '+ '
+    else
+        sign = ''
+    end
+
+    return string.format('%s%02d:%02d:%02d', sign, hours, minutes, seconds)
+end
+
+
 function generate_ui()
-    self.createButton({
-        click_function = 'test_button',
+    -- scale UI to be 1-to-1 independant of object scale bias
+    object_scale = self.getScale()
+    object_height_scale = object_scale[3]
+    UI_scale = {}
+    for _, scale in pairs(object_scale) do
+        table.insert(UI_scale, 0.5 * object_height_scale / scale)
+    end
+    UI_scale[3] = UI_scale[3] * 0.3 / 0.5  -- font look better at this ratio
+    -- UI_scale = {0.147, 2.5, 0.30}
+    -- printToAll(tostring(UI_scale[3]), 'White')
+
+    -- vertical positions calculated using ratios of the total space
+    --    1 space
+    --    10 buttons
+    --        1 space
+    --        10 button row
+    --        1 space
+    --        10 button row
+    --        1 space
+    --    1 space
+    --    10 time
+    --    1 space / next button
+    --    10 time
+    --    1 space
+    -- Then heights/fonts derived empirically
+
+    -- buttons
+    button_template = {
         function_owner = self,
-        label          = 'test',
-        position       = {0, 1, 0},
-        rotation       = {0, 0, 0},
-        width          = 200,
-        height         = 100,
-        font_size      = 40,
+        height         = 250,
+        width          = 800,
+        font_size      = 120,
         color          = 'Black',
-        tooltip        = 'test',
-    })
+        font_color     = 'White',
+        scale          = UI_scale,
+    }
+    v_pos = 0.51
+
+    self.createButton(concat_tables(
+        button_template, {
+            click_function = 'test_button',
+            label          = 'Start first timer',
+            position       = {-0.37, v_pos, -11/34 - 10/34*6/23},
+            color          = 'Green',
+            width          = 1000,
+            tooltip        = 'Start whichever timer is first in turn order. Bronstein field (+time) is reset.',
+        })
+    )
+
+    self.createButton(concat_tables(
+        button_template, {
+            click_function = 'test_button',
+            label          = 'Start this timer',
+            position       = {-0.37, v_pos, -11/34 + 10/34*6/23},
+            color          = 'Green',
+            width          = 1000,
+            tooltip        = 'Start this timer, disregarding first turn order. Bronstein field (+time) is reset.',
+        })
+    )
+
+    self.createButton(concat_tables(
+        button_template, {
+            click_function = 'test_button',
+            label          = 'Reset All',
+            position       = {-0.11, v_pos, -11/34},
+            color          = 'Red',
+            tooltip        = 'Reset and stop all timers',
+        })
+    )
+
+    self.createButton(concat_tables(
+        button_template, {
+            click_function = 'test_button',
+            label          = 'Pause All',
+            position       = {0.13, v_pos, -11/34},
+            tooltip        = 'Pauses all timers',
+        })
+    )
+
+    self.createButton(concat_tables(
+        button_template, {
+            click_function = 'test_button',
+            label          = 'Turn Order',
+            font_color     = 'Black',
+            height         = 0,
+            width          = 0,
+            position       = {0.37, v_pos, -11/34 - 10/34*6/23},
+        })
+    )
+
+    self.createButton(concat_tables(
+        button_template, {
+            click_function = 'test_button',
+            label          = 'Next\nTurn',
+            font_color     = 'Black',
+            color          = 'Orange',
+            height         = 800,
+            width          = 1000,
+            position       = {0.37, v_pos, 5.5/34},
+            alignment      = 3, -- center aligned
+        })
+    )
+
+    -- turn field
+    self.createInput(concat_tables(
+        button_template, {
+            input_function = 'test_button',
+            label          = '1',
+            font_color     = 'Black',
+            font_size      = 200,
+            color          = 'White',
+            position       = {0.37, v_pos, -11/34 + 10/34*6/23},
+            tooltip        = 'Any number. Determines which timer is triggered when "Next" button is used, in ascending round-robin order.',
+            alignment      = 3, -- center aligned
+        })
+    )
+
+    -- time fields
+    input_template = {
+        function_owner = self,
+        height         = 500,
+        width          = 2850,
+        font_size      = 450,
+        color          = 'White',
+        font_color     = 'Black',
+        scale          = UI_scale,
+        label          = '+00:00:00.00',
+        alignment      = 2, -- left aligned
+    }
+
+    self.createInput(concat_tables(
+        input_template, {
+            input_function = 'test_button',
+            position       = {-0.13, v_pos, 0},
+            tooltip        = 'Pool time remaining, used after Bronstein Time runs out each turn.',
+        })
+    )
+
+    self.createInput(concat_tables(
+        input_template, {
+            input_function = 'test_button',
+            position       = {-0.13, v_pos, 11/34},
+            tooltip        = 'Bronstein Time remaining. Refreshed each turn, and used up before pool time is used.',
+        })
+    )
 end
 
 
 function test_button()
-    printToAll('', {1, 1, 1})
-    printToAll('self: ' .. tostring(self.guid), {1, 1, 1})
-    printToAll('next_relative: ' .. tostring(next_relative.getVar('self').guid), {1, 1, 1})
+    printToAll('', 'White')
+    printToAll('self: ' .. tostring(self.guid), 'White')
+    printToAll('name: ' .. tostring(self.getName()), 'White')
+    printToAll('next_relative: ' .. tostring(next_relative.getVar('self').guid), 'White')
 
-    printToAll('family:', {1, 1, 1})
+    printToAll('family:', 'White')
     family = Global.getTable(GLOBAL_COORDINATION_VAR)
     for relative, _ in pairs(family) do
-        printToAll('    ' .. tostring(relative) .. ': ' .. tostring(relative.getVar('self').guid), {1,1,1})
+        printToAll('    ' .. tostring(relative) .. ': ' .. tostring(relative.getVar('self').guid), 'White')
     end
 end
 
@@ -87,21 +256,7 @@ end
 
 function remove_self_from_family()
     family = Global.getTable(GLOBAL_COORDINATION_VAR)
-
-    -- TMP
-    printToAll('--A-- family:', {1, 1, 1})
-    for relative, _ in pairs(family) do
-        printToAll('    ' .. tostring(relative) .. ': ' .. tostring(relative.getVar('self').guid), {1,1,1})
-    end
-
     family[self] = nil
-
-    -- TMP
-    printToAll('--B-- family:', {1, 1, 1})
-    for relative, _ in pairs(family) do
-        printToAll('    ' .. tostring(relative) .. ': ' .. tostring(relative.getVar('self').guid), {1,1,1})
-    end
-
     Global.setTable(GLOBAL_COORDINATION_VAR, family)
 
     -- instruct relatives to update family list and recompute derived parameters
@@ -127,6 +282,8 @@ function onLoad(saved_state)
     -- 'state' will be stored and recovered across saves, other variables will not
     state = {
         turn = 1,
+        pool_time_original = 15*60,
+        bronstein_time_original = 15,
     }
     next_relative = nil  -- object cannot be serialized, and is recomputed on load anyway
 
