@@ -3,6 +3,7 @@ GLOBAL_COORDINATION_VAR = 'tts_bronstein_multi_timer'
 
 
 function concat_tables(table1, table2)
+    -- util function
     -- dict format only
     -- table2 entries take precidence, in case of duplicate keys.
     -- does not deep copy references
@@ -38,16 +39,7 @@ end
 
 
 function generate_ui()
-    -- scale UI to be 1-to-1 independant of object scale bias
-    object_scale = self.getScale()
-    object_height_scale = object_scale[3]
-    UI_scale = {}
-    for _, scale in pairs(object_scale) do
-        table.insert(UI_scale, 0.5 * object_height_scale / scale)
-    end
-    UI_scale[3] = UI_scale[3] * 0.3 / 0.5  -- font look better at this ratio
-    -- UI_scale = {0.147, 2.5, 0.30}
-    -- printToAll(tostring(UI_scale[3]), 'White')
+    -- creates UI elements
 
     -- vertical positions calculated using ratios of the total space
     --    1 space
@@ -63,6 +55,15 @@ function generate_ui()
     --    10 time
     --    1 space
     -- Then heights/fonts derived empirically
+
+    -- scale UI to be 1-to-1 independant of object scale bias
+    object_scale = self.getScale()
+    object_height_scale = object_scale[3]
+    UI_scale = {}
+    for _, scale in pairs(object_scale) do
+        table.insert(UI_scale, 0.5 * object_height_scale / scale)
+    end
+    UI_scale[3] = UI_scale[3] * 0.3 / 0.5  -- font looks better at this ratio
 
     -- buttons
     button_template = {
@@ -120,19 +121,9 @@ function generate_ui()
     self.createButton(concat_tables(
         button_template, {
             click_function = 'test_button',
-            label          = 'Turn Order',
-            font_color     = 'Black',
-            height         = 0,
-            width          = 0,
-            position       = {0.37, v_pos, -11/34 - 10/34*6/23},
-        })
-    )
-
-    self.createButton(concat_tables(
-        button_template, {
-            click_function = 'test_button',
             label          = 'Next\nTurn',
             font_color     = 'Black',
+            font_size      = 250,
             color          = 'Orange',
             height         = 800,
             width          = 1000,
@@ -141,10 +132,21 @@ function generate_ui()
         })
     )
 
-    -- turn field
+    -- turn order field
+    self.createButton(concat_tables(
+        button_template, {
+            click_function = 'test_button',
+            label          = 'Turn Order',
+            font_color     = 'Black',
+            height         = 0,  -- text display, not an actual button. There is no pure text tool.
+            width          = 0,
+            position       = {0.37, v_pos, -11/34 - 10/34*6/23},
+        })
+    )
+
     self.createInput(concat_tables(
         button_template, {
-            input_function = 'test_button',
+            input_function = 'turn_order_edited',
             label          = '1',
             font_color     = 'Black',
             font_size      = 200,
@@ -152,6 +154,7 @@ function generate_ui()
             position       = {0.37, v_pos, -11/34 + 10/34*6/23},
             tooltip        = 'Any number. Determines which timer is triggered when "Next" button is used, in ascending round-robin order.',
             alignment      = 3, -- center aligned
+            -- validation     = 3, -- float
         })
     )
 
@@ -166,47 +169,138 @@ function generate_ui()
         scale          = UI_scale,
         label          = '+00:00:00.00',
         alignment      = 2, -- left aligned
+        validation     = 3, -- float
     }
 
     self.createInput(concat_tables(
         input_template, {
-            input_function = 'test_button',
+            input_function = 'pool_time_edited',
             position       = {-0.13, v_pos, 0},
             tooltip        = 'Pool time remaining, used after Bronstein Time runs out each turn.',
         })
     )
+    pool_time_edit_index = #self.getInputs() - 1
 
     self.createInput(concat_tables(
         input_template, {
-            input_function = 'test_button',
+            input_function = 'bronstein_time_edited',
             position       = {-0.13, v_pos, 11/34},
             tooltip        = 'Bronstein Time remaining. Refreshed each turn, and used up before pool time is used.',
         })
     )
+    bronstein_time_edit_index = #self.getInputs() - 1
 end
 
 
 function test_button()
     printToAll('', 'White')
     printToAll('self: ' .. tostring(self.guid), 'White')
-    printToAll('name: ' .. tostring(self.getName()), 'White')
-    printToAll('next_relative: ' .. tostring(next_relative.getVar('self').guid), 'White')
+    
+    -- state
+    printToAll('state:', 'White')
+    for key, val in pairs(state) do
+        printToAll('    ' .. tostring(key) .. ': ' .. tostring(val), 'White')
+    end
 
-    printToAll('family:', 'White')
-    family = Global.getTable(GLOBAL_COORDINATION_VAR)
-    for relative, _ in pairs(family) do
-        printToAll('    ' .. tostring(relative) .. ': ' .. tostring(relative.getVar('self').guid), 'White')
+    -- -- family
+    -- printToAll('next_relative: ' .. tostring(next_relative.getVar('self').guid), 'White')
+    -- printToAll('family:', 'White')
+    -- family = Global.getTable(GLOBAL_COORDINATION_VAR)
+    -- for relative, _ in pairs(family) do
+    --     printToAll('    ' .. tostring(relative) .. ': ' .. tostring(relative.getVar('self').guid), 'White')
+    -- end
+
+    -- -- inputs list
+    -- printToAll('inputs:', 'White')
+    -- family = Global.getTable(GLOBAL_COORDINATION_VAR)
+    -- for key, val in pairs(self.getInputs()) do
+    --     printToAll('    ' .. tostring(key) .. ': ' .. tostring(val), 'White')
+    --     for key, val in pairs(val) do
+    --         printToAll('        ' .. tostring(key) .. ': ' .. tostring(val), 'White')
+    --     end
+    -- end
+end
+
+
+function turn_order_edited(obj, player_clicker_color, input_value, still_editing)
+    validity = validate_input_edit(input_value, still_editing)
+    if validity == 1 then
+        return tostring(state.turn)  -- return value from this callback sets input state
+    elseif validity == 2 then
+        state.turn = tonumber(input_value)
+        instruct_update_families()
     end
 end
 
 
-function add_relative(id)
-    family[id] = true
+function pool_time_edited(obj, player_clicker_color, input_value, still_editing)
+    validity = validate_input_edit(input_value, still_editing)
+    if validity == 1 then
+
+        printToAll('testedit: ' .. tostring(state) .. ': ' .. tostring(state.pool_time_remaining), 'White')
+        for key, val in pairs(state) do
+            printToAll('    ' .. tostring(key) .. ': ' .. tostring(val), 'White')
+        end
+
+        return format_time(state.pool_time_remaining, false)  -- return value from this callback sets input state
+    elseif validity == 2 then
+        state.pool_time_original = tonumber(input_value)
+    end
 end
 
 
-function remove_relative(id)
-    family[id] = nil
+function bronstein_time_edited(obj, player_clicker_color, input_value, still_editing)
+    validity = validate_input_edit(input_value, still_editing)
+    if validity == 1 then
+        return format_time(state.bronstein_time_remaining, true)  -- return value from this callback sets input state
+    elseif validity == 2 then
+        state.bronstein_time_original = tonumber(input_value)
+    end
+end
+
+
+function validate_input_edit(input_value, still_editing)
+    -- returns one of
+    --    0 = still editing, do not respond
+    --    1 = invalid edit, reset input field
+    --    2 = valid
+
+    if still_editing then
+        return 0
+    else
+        if state.any_timer_running then
+            printToAll('Cannot update parameters while timer is running!', 'White')
+            return 1
+        else
+            if not validate_float_string(input_value) then
+                printToAll('Input value is invalid, must be a valid number (int,float): ' .. input_value, 'White')
+                return 1
+            else
+                return 2
+            end
+        end
+    end
+end
+
+
+function validate_float_string(s)
+    -- validates string before numerical conversion
+    -- atleast one side of the decimal must contain a number, so can't do double star
+    return (string.find(s, '^%d+(%.%d*)?$|^%.%d+$') ~= nil)
+end
+
+
+function start_timer()
+--TODO
+end
+
+
+function update_timer()
+    -- computes time difference since timer start
+    -- handles transition from bronstein timer to pool timer
+    -- handles timer run out
+    -- updates UI time elements
+
 end
 
 
@@ -239,6 +333,14 @@ function update_family()
 end
 
 
+function instruct_update_families()
+    -- instruct relatives to update family list and recompute derived parameters
+    for relative, _ in pairs(family) do
+        relative.call('update_family')
+    end
+end
+
+
 function add_self_to_family()
     family = Global.getTable(GLOBAL_COORDINATION_VAR)
     if family == nil then
@@ -247,10 +349,7 @@ function add_self_to_family()
     family[self] = true
     Global.setTable(GLOBAL_COORDINATION_VAR, family)
 
-    -- instruct relatives to update family list and recompute derived parameters
-    for relative, _ in pairs(family) do
-        relative.call('update_family')
-    end
+    instruct_update_families()
 end
 
 
@@ -259,10 +358,7 @@ function remove_self_from_family()
     family[self] = nil
     Global.setTable(GLOBAL_COORDINATION_VAR, family)
 
-    -- instruct relatives to update family list and recompute derived parameters
-    for relative, _ in pairs(family) do
-        relative.call('update_family')
-    end
+    instruct_update_families()
 end
 
 
@@ -282,17 +378,52 @@ function onLoad(saved_state)
     -- 'state' will be stored and recovered across saves, other variables will not
     state = {
         turn = 1,
-        pool_time_original = 15*60,
+        pool_time_original = 900,
+        pool_time_remaining = 900,
         bronstein_time_original = 15,
+        bronstein_time_remaining = 15,
+        
+        -- timer is always in one of 3 states: running, paused, or reset
+        timer_running = false,
+        timer_paused = false,
+        any_timer_running = false,  -- coordinates family activity
     }
     next_relative = nil  -- object cannot be serialized, and is recomputed on load anyway
+    earliest_relative = nil  -- object cannot be serialized, and is recomputed on load anyway
+    countdown_start_time = nil  -- absolute clock reference is not valid between saves
+    pool_time_edit_index = nil  -- created on load
+    bronstein_time_edit_index = nil  -- created on load
+
+    -- TODO TMP
+    test_button()
 
     -- recover personal state, if any
     if saved_state ~= nil and saved_state ~= '' then
-        state = JSON.decode(saved_state)
+        -- do this piece-wise to allow fields to be added/removed during development
+        -- state = JSON.decode(saved_state)
+        _state = JSON.decode(saved_state)
+        for key, val in pairs(_state) do
+            if state[key] ~= nil then  -- allow fields to be deleted
+                state[key] = val
+            end
+        end
     end
 
+    -- TODO TMP
+    test_button()
+
+    -- communicate with other timers
     add_self_to_family()
+
+    -- build UI
     generate_ui()
+
+    -- restart timer between saves
+    if state.timer_running then
+        start_timer()
+    end
+
+    -- schedule update loop
+    -- TODO
 end
 
