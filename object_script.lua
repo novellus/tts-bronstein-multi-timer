@@ -1,4 +1,5 @@
 -- code repo: https://github.com/novellus/tts-bronstein-multi-timer
+-- tabletop simulator workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=2844751292#
 
 -- used to corrdinate between all timer clones
 GLOBAL_COORDINATION_VAR = 'tts_bronstein_multi_timer'
