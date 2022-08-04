@@ -308,9 +308,6 @@ function start_timer()
     -- starts this timer
     -- resets bronstein field, logs start time, and schedules an update loop
 
-    -- TODO
-    -- validate_turn_order()
-
     -- update state
     state.timer_running = true
     instruct_any_timer_running(true)
