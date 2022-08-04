@@ -1,3 +1,5 @@
+-- code repo: https://github.com/novellus/tts-bronstein-multi-timer
+
 -- used to corrdinate between all timer clones
 GLOBAL_COORDINATION_VAR = 'tts_bronstein_multi_timer'
 
