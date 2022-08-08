@@ -37,7 +37,7 @@ function format_time(seconds, plus)
     seconds = seconds % 60
 
     if plus then
-        sign = '+ '
+        sign = '+'
     else
         sign = ''
     end
@@ -191,7 +191,7 @@ function generate_ui()
             input_function = 'pool_time_edited',
             position       = {-0.13, v_pos, 0},
             value          = format_time(state.pool_time_remaining, false),
-            tooltip        = 'Pool time remaining, used after Bronstein Time runs out each turn.',
+            tooltip        = 'Pool time remaining, used after Bronstein Time runs out each turn. Click to edit field when timers are not running, use HH:MM:SS.SS format.',
         })
     )
     pool_time_edit_index = #self.getInputs() - 1
@@ -201,7 +201,7 @@ function generate_ui()
             input_function = 'bronstein_time_edited',
             position       = {-0.13, v_pos, 11/34},
             value          = format_time(state.bronstein_time_remaining, true),
-            tooltip        = 'Bronstein Time remaining. Refreshed each turn, and used up before pool time is used.',
+            tooltip        = 'Bronstein Time remaining. Refreshed each turn, and used up before pool time is used. Click to edit field when timers are not running, use HH:MM:SS.SS format.',
         })
     )
     bronstein_time_edit_index = #self.getInputs() - 1
@@ -240,22 +240,23 @@ end
 
 
 function turn_order_edited(obj, player_clicker_color, input_value, still_editing)
-    validity = validate_input_edit(input_value, still_editing)
+    validity = validate_input_edit(input_value, still_editing, validate_float_string, 'a number (positive int or float')
     if validity == 1 then
         return tostring(state.turn)  -- return value from this callback sets input state
     elseif validity == 2 then
         state.turn = tonumber(input_value)
         instruct_update_families()
+        return tostring(state.turn)  -- return value from this callback sets input state
     end
 end
 
 
 function pool_time_edited(obj, player_clicker_color, input_value, still_editing)
-    validity = validate_input_edit(input_value, still_editing)
+    validity = validate_input_edit(input_value, still_editing, validate_HMS_string, 'in "HH:MM:SS.SS" format (all numbers positive; hours and minutes are optional)')
     if validity == 1 then
         return format_time(state.pool_time_remaining, false)  -- return value from this callback sets input state
     elseif validity == 2 then
-        state.pool_time_original = tonumber(input_value)
+        state.pool_time_original = parse_HMS_string(input_value)
         state.pool_time_remaining = state.pool_time_original
         return format_time(state.pool_time_original, false)  -- return value from this callback sets input state
     end
@@ -263,18 +264,18 @@ end
 
 
 function bronstein_time_edited(obj, player_clicker_color, input_value, still_editing)
-    validity = validate_input_edit(input_value, still_editing)
+    validity = validate_input_edit(input_value, still_editing, validate_HMS_string, 'in "HH:MM:SS.SS" format (all numbers positive; hours and minutes are optional)')
     if validity == 1 then
         return format_time(state.bronstein_time_remaining, true)  -- return value from this callback sets input state
     elseif validity == 2 then
-        state.bronstein_time_original = tonumber(input_value)
+        state.bronstein_time_original = parse_HMS_string(input_value)
         state.bronstein_time_remaining = state.bronstein_time_original
         return format_time(state.bronstein_time_original, true)  -- return value from this callback sets input state
     end
 end
 
 
-function validate_input_edit(input_value, still_editing)
+function validate_input_edit(input_value, still_editing, string_validator, error_type)
     -- returns one of
     --    0 = still editing, do not respond
     --    1 = invalid edit, reset input field
@@ -287,8 +288,8 @@ function validate_input_edit(input_value, still_editing)
             printToAll('Cannot update parameters while any timer is running! Use "Pause All" or "Reset All" if you want to edit fields.', 'White')
             return 1
         else
-            if not validate_float_string(input_value) then
-                printToAll('Manual input value is invalid, must be a number (positive int or float): "' .. input_value .. '"', 'White')
+            if not string_validator(input_value) then
+                printToAll('Manual input value is invalid, must be ' .. error_type .. ', got: "' .. input_value .. '"', 'White')
                 return 1
             else
                 return 2
@@ -301,9 +302,70 @@ end
 function validate_float_string(s)
     -- validates string before numerical conversion
     -- atleast one side of the decimal must contain a number, so can't do double star
-    valid =          string.find(s, '^%d+%.?%d*$') ~= nil
-    valid = valid or string.find(s,    '^%.%d+$')  ~= nil
+
+    valid =          string.find(s, '^%+?%d+%.?%d*$') ~= nil
+    valid = valid or string.find(s,    '^%+?%.%d+$')  ~= nil
     return valid
+end
+
+
+function reverse_split(s, delim, empty_replace)
+    -- splits a string based on delimiter, allowing empty substrings
+    -- replaces empty substrings with optional argument
+    -- returns elements in reverse order list-style-table
+
+    -- append delimiter to enable capturing empty substrings by requiring a delimiter follow all substrings
+    s = s .. delim
+
+    ret = {}
+    for sub_string in string.gmatch(s, '([^' .. delim .. ']*)' .. delim) do
+
+        -- replace empty substrings
+        if empty_replace ~= nil and sub_string == '' then
+            sub_string = empty_replace
+        end
+
+        -- build table in reverse order
+        table.insert(ret, 1, sub_string)
+    end
+
+    return ret
+end
+
+
+function validate_HMS_string(s)
+    -- validates string before numerical conversion
+    -- overall format is "HH:MM:SS.SS" where
+    --    all numbers positive
+    --    hours and minutes are optional
+    --    empty fields are assumed to be zero
+    -- use float validator on each subcomponent (separated by colon)
+
+    valid = true
+    for _, sub_string in pairs(reverse_split(s, ':', '0')) do
+        valid = valid and validate_float_string(sub_string)
+    end
+
+    return valid
+end
+
+
+function parse_HMS_string(s)
+    -- converts "HH:MM:SS.SS" format to number of seconds where
+    --    all numbers positive
+    --    hours and minutes are optional
+    --    empty fields are assumed to be zero
+    --    missing fields are assumed to be highest fields (first hours, then minutes). Seconds must always be specified.
+
+    multiplier = 1
+    seconds = 0
+
+    for _, sub_string in pairs(reverse_split(s, ':', '0')) do
+        seconds = seconds + multiplier * tonumber(sub_string)
+        multiplier = multiplier * 60
+    end
+
+    return seconds
 end
 
 

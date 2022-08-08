@@ -7,4 +7,4 @@ Turn timer for any number of players
 * For more info on Bronstein timing, and how it differs from classic turn timers, see https://en.wikipedia.org/wiki/Chess_clock
 * Timer can be cloned any number of times, and all timers coordinate
 * Starts next timer in turn order when "Next Turn" is pressed
-* Customizable clock times per player (select clock, type number of seconds, clock will convert to HH:MM:SS)
+* Customizable clock times per player (select clock field, type in HH:MM:SS.SS format)
