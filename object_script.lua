@@ -37,7 +37,7 @@ function format_time(seconds, plus)
     seconds = seconds % 60
 
     if plus then
-        sign = '+'
+        sign = '+ '
     else
         sign = ''
     end
@@ -181,7 +181,7 @@ function generate_ui()
         color          = 'White',
         font_color     = 'Black',
         scale          = UI_scale,
-        label          = '+00:00:00.00',
+        label          = '+ 00:00:00.00',
         alignment      = 4, -- right aligned
         -- validation  = built-in validation cannot be used, since we want to display ':' and '+' symbols
     }
@@ -240,6 +240,7 @@ end
 
 
 function turn_order_edited(obj, player_clicker_color, input_value, still_editing)
+    input_value = string.gsub(input_value, '%s', '') -- eliminate white space
     validity = validate_input_edit(input_value, still_editing, validate_float_string, 'a number (positive int or float')
     if validity == 1 then
         return tostring(state.turn)  -- return value from this callback sets input state
@@ -252,6 +253,7 @@ end
 
 
 function pool_time_edited(obj, player_clicker_color, input_value, still_editing)
+    input_value = string.gsub(input_value, '%s', '') -- eliminate white space
     validity = validate_input_edit(input_value, still_editing, validate_HMS_string, 'in "HH:MM:SS.SS" format (all numbers positive; hours and minutes are optional)')
     if validity == 1 then
         return format_time(state.pool_time_remaining, false)  -- return value from this callback sets input state
@@ -264,6 +266,7 @@ end
 
 
 function bronstein_time_edited(obj, player_clicker_color, input_value, still_editing)
+    input_value = string.gsub(input_value, '%s', '') -- eliminate white space
     validity = validate_input_edit(input_value, still_editing, validate_HMS_string, 'in "HH:MM:SS.SS" format (all numbers positive; hours and minutes are optional)')
     if validity == 1 then
         return format_time(state.bronstein_time_remaining, true)  -- return value from this callback sets input state
