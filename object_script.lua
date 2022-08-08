@@ -208,37 +208,6 @@ function generate_ui()
 end
 
 
-function test_button()
-    printToAll('', 'White')
-    printToAll('self: ' .. tostring(self.guid), 'White')
-    
-    -- state
-    printToAll('state:', 'White')
-    for key, val in pairs(state) do
-        printToAll('    ' .. tostring(key) .. ': ' .. tostring(val), 'White')
-    end
-
-    -- family
-    printToAll('next_relative: ' .. tostring(next_relative.getVar('self').guid), 'White')
-    printToAll('earliest_relative: ' .. tostring(earliest_relative.getVar('self').guid), 'White')
-    printToAll('family:', 'White')
-    family = Global.getTable(GLOBAL_COORDINATION_VAR)
-    for relative, _ in pairs(family) do
-        printToAll('    ' .. tostring(relative) .. ': ' .. tostring(relative.getVar('self').guid) .. ', ' .. tostring(relative.getVar('state').turn), 'White')
-    end
-
-    -- -- inputs list
-    -- printToAll('inputs:', 'White')
-    -- family = Global.getTable(GLOBAL_COORDINATION_VAR)
-    -- for key, val in pairs(self.getInputs()) do
-    --     printToAll('    ' .. tostring(key) .. ': ' .. tostring(val), 'White')
-    --     for key, val in pairs(val) do
-    --         printToAll('        ' .. tostring(key) .. ': ' .. tostring(val), 'White')
-    --     end
-    -- end
-end
-
-
 function turn_order_edited(obj, player_clicker_color, input_value, still_editing)
     input_value = string.gsub(input_value, '%s', '') -- eliminate white space
     validity = validate_input_edit(input_value, still_editing, validate_float_string, 'a number (positive int or float')
