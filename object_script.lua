@@ -257,11 +257,11 @@ function validate_input_edit(input_value, still_editing, string_validator, error
         return 0
     else
         if state.any_timer_running then
-            printToAll('Cannot update parameters while any timer is running! Use "Pause All" or "Reset All" if you want to edit fields.', 'White')
+            printToAll('Cannot update parameters while any timer is running! Use "Pause All" or "Reset All" if you want to edit fields.', 'Red')
             return 1
         else
             if not string_validator(input_value) then
-                printToAll('Manual input value is invalid, must be ' .. error_type .. ', got: "' .. input_value .. '"', 'White')
+                printToAll('Manual input value is invalid, must be ' .. error_type .. ', got: "' .. input_value .. '"', 'Red')
                 return 1
             else
                 return 2
@@ -384,7 +384,7 @@ function validate_user_call_to_start()
     
     -- no timer running
     if state.any_timer_running then
-        printToAll('A timer is already running, cannot start this one! Use "Reset" and then "Start" if you want to restart.', 'White')
+        printToAll('A timer is already running, cannot start this one! Use "Reset" and then "Start" if you want to restart.', 'Red')
         return false
     end
 
@@ -395,7 +395,7 @@ function validate_user_call_to_start()
     for relative, _ in pairs(family) do
         relative_turn = relative.getVar('state').turn
         if turns[relative_turn] ~= nil then
-            printToAll('Turn order fields are not unique, refusing to start timers! Make all turn fields unique, and then try again.', 'White')
+            printToAll('Turn order fields are not unique, refusing to start timers! Make all turn fields unique, and then try again.', 'Red')
             return false
         else
             turns[relative_turn] = true
@@ -518,7 +518,7 @@ end
 function next_turn()
     -- Passes turn to the next player, pausing this timer, and starting the next timer
     if not state.timer_running then
-        printToAll('This timer is not running, ignoring attempt to go to next turn.', 'White')
+        printToAll('This timer is not running, ignoring attempt to go to next turn.', 'Red')
     else
         -- TODO play a sound effect on turn pass
         pause_timer(false)
@@ -556,7 +556,7 @@ function update_family()
 
     -- warn on family update while running, which is user error
     if state.running then
-        printToAll('Warning: timer family was updated while a timer was running, may get glitchy?', 'White')
+        printToAll('Warning: timer family was updated while a timer was running, may get glitchy?', 'Red')
     end
 end
 
